@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bramzz Lab • Web Encoder</title>
+
+<style>
+:root{
+  --bg:#0b0e14;
+  --card:#121826;
+  --neon:#5ef2ff;
+  --accent:#8b5cf6;
+  --text:#e5e7eb;
+  --muted:#9ca3af;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:Inter,Segoe UI,system-ui;
+  background:
+    radial-gradient(circle at top, #1f2933 0%, #020617 45%, #020617 100%);
+  color:var(--text);
+}
+
+/* ambient blur */
+.bg-glow{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+}
+.bg-glow::before,
+.bg-glow::after{
+  content:"";
+  position:absolute;
+  width:400px;
+  height:400px;
+  filter:blur(120px);
+  opacity:.35;
+}
+.bg-glow::before{
+  background:#22d3ee;
+  top:-100px;
+  left:-100px;
+}
+.bg-glow::after{
+  background:#a78bfa;
+  bottom:-120px;
+  right:-120px;
+}
+
+.wrapper{
+  max-width:900px;
+  margin:auto;
+  padding:40px 20px;
+}
+
+.header{
+  text-align:center;
+  margin-bottom:40px;
+}
+.header h1{
+  margin:0;
+  font-size:2.6rem;
+  font-weight:800;
+  letter-spacing:.5px;
+  background:linear-gradient(90deg,var(--neon),var(--accent));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+.header p{
+  margin-top:10px;
+  color:var(--muted);
+  font-size:.95rem;
+}
+
+.card{
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:18px;
+  padding:28px;
+  box-shadow:0 20px 50px rgba(0,0,0,.6);
+}
+
+/* INPUT */
+.field{
+  display:flex;
+  gap:14px;
+}
+.field input{
+  flex:1;
+  padding:14px 16px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.15);
+  background:#020617;
+  color:var(--text);
+  font-size:15px;
+}
+.field input:focus{
+  outline:none;
+  border-color:var(--neon);
+  box-shadow:0 0 0 2px rgba(94,242,255,.15);
+}
+
+.field button{
+  padding:14px 22px;
+  border-radius:12px;
+  border:none;
+  cursor:pointer;
+  font-weight:700;
+  color:#020617;
+  background:linear-gradient(135deg,var(--neon),var(--accent));
+}
+.field button:hover{
+  filter:brightness(1.1);
+}
+
+/* LOADING */
+.loader{
+  display:none;
+  margin-top:20px;
+  color:var(--muted);
+  font-size:.9rem;
+}
+.loader.active{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.spinner{
+  width:22px;
+  height:22px;
+  border:3px solid rgba(255,255,255,.2);
+  border-top-color:var(--neon);
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* RESULT */
+.result{
+  display:none;
+  margin-top:30px;
+}
+.result.active{display:block}
+
+.meta{
+  display:flex;
+  gap:14px;
+  margin-bottom:16px;
+  font-size:.85rem;
+}
+.meta span{
+  background:#020617;
+  border:1px solid rgba(255,255,255,.1);
+  padding:6px 10px;
+  border-radius:8px;
+  color:var(--muted);
+}
+
+.output{
+  position:relative;
+  background:#020617;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.1);
+  padding:20px;
+  max-height:420px;
+  overflow:auto;
+}
+
+pre{
+  margin:0;
+  font-family:Consolas,monospace;
+  font-size:13px;
+  color:var(--neon);
+  white-space:pre-wrap;
+  word-break:break-all;
+}
+
+.copy{
+  position:absolute;
+  top:12px;
+  right:12px;
+  padding:6px 12px;
+  border-radius:8px;
+  border:1px solid var(--neon);
+  background:transparent;
+  color:var(--neon);
+  cursor:pointer;
+  font-size:.8rem;
+}
+.copy.ok{
+  border-color:#22c55e;
+  color:#22c55e;
+}
+
+@media(max-width:640px){
+  .field{flex-direction:column}
+  .header h1{font-size:2rem}
+}
+</style>
+</head>
+
+<body>
+<div class="bg-glow"></div>
+
+<div class="wrapper">
+  <div class="header">
+    <h1>Bramzz Lab</h1>
+    <p>Web Encoder & Script Extractor</p>
+  </div>
+
+  <div class="card">
+    <div class="field">
+      <input id="url" type="url" placeholder="https://target-web.com">
+      <button onclick="run()">Extract</button>
+    </div>
+
+    <div class="loader" id="load">
+      <div class="spinner"></div>
+      <span>Processing request…</span>
+    </div>
+
+    <div class="result" id="result">
+      <div class="meta">
+        <span id="creator">Creator: -</span>
+        <span id="status">Status: -</span>
+      </div>
+
+      <div class="output">
+        <button class="copy" onclick="copy()">Copy</button>
+        <pre id="code"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+async function run(){
+  const url=document.getElementById("url").value.trim();
+  if(!url || !url.startsWith("https://")){
+    alert("URL harus pakai https://");
+    return;
+  }
+
+  load.classList.add("active");
+  result.classList.remove("active");
+
+  try{
+    const r=await fetch(`https://api.resellergaming.my.id/tools/getcode?url=${encodeURIComponent(url)}`);
+    const d=await r.json();
+
+    creator.textContent="Creator: "+d.creator;
+    status.textContent="Status: "+(d.status?"Success":"Failed");
+    code.textContent=d.result.html;
+
+    result.classList.add("active");
+  }catch(e){
+    alert("Gagal mengambil data");
+  }finally{
+    load.classList.remove("active");
+  }
+}
+
+function copy(){
+  navigator.clipboard.writeText(code.textContent);
+  const b=document.querySelector(".copy");
+  b.textContent="Copied";
+  b.classList.add("ok");
+  setTimeout(()=>{
+    b.textContent="Copy";
+    b.classList.remove("ok");
+  },1500);
+}
+</script>
+</body>
+</html>
